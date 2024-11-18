@@ -15,10 +15,10 @@ import (
 
 // definig a data that needs to be sent via TCP
 type complexinputData struct {
-	num int
-	str string
+	Num int
+	Str string
 	M   map[string]int
-	p   []byte
+	P   []byte
 }
 
 const Port = ":62000" //might not change the port number
@@ -118,8 +118,8 @@ func handleGob(rw *bufio.ReadWriter) {
 		log.Println("Error while decoding the data", err)
 		return
 	}
-
-	log.Printf("complex input data: \n%#v\n ", data)
+	log.Println(data)
+	//log.Printf("complex input data: \n%#v\n ", data)
 }
 
 func (e *Endpoint) Listen() error {
@@ -143,9 +143,9 @@ func (e *Endpoint) Listen() error {
 func client(ip string) error {
 
 	testdata := complexinputData{
-		num: 10,
-		str: "String sample",
-		p:   []byte("lol"),
+		Num: 10,
+		Str: "String sample",
+		P:   []byte("lol"),
 		M:   map[string]int{"Messi": 10, "Neymar": 11, "Cristiano": 7},
 	}
 
@@ -182,7 +182,7 @@ func client(ip string) error {
 	//need to code for the gob part
 
 	log.Println("Complexinputdata", testdata)
-
+	//this only works with the fields that start with Upper case letter. Ridiculous
 	enc := gob.NewEncoder(rw)
 	n, err = rw.WriteString("GOB\n")
 
