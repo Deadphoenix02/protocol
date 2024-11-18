@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"encoding/gob"
 	"errors"
+	"flag"
 	"io"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -72,7 +74,7 @@ func (e *Endpoint) handleMessage(conn net.Conn) {
 		}
 
 		cmd = strings.Trim(cmd, "\n ")
-		log.Println(cmd + "'")
+		log.Print(cmd + "'")
 
 		e.m.RLock()
 		handlecommand, ok := e.handler[cmd]
@@ -90,12 +92,12 @@ func handleString(rw *bufio.ReadWriter) {
 	log.Print("receive a string")
 	s, err := rw.ReadString('\n')
 	if err != nil {
-		log.Println("Cannot read data from the connection")
+		log.Println("Cannot read data from the connection", err)
 	}
-	s = strings.Trim(s, "\n")
+	s = strings.Trim(s, "\n ")
 	log.Println(s)
 
-	_, err = rw.WriteString("Got it")
+	_, err = rw.WriteString("Got it \n")
 	if err != nil {
 		log.Println("Cannot write into the client connection")
 	}
@@ -117,7 +119,7 @@ func handleGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	log.Printf("complex input data ", data)
+	log.Printf("complex input data: \n%#v\n ", data)
 }
 
 func (e *Endpoint) Listen() error {
@@ -154,10 +156,12 @@ func client(ip string) error {
 
 	log.Printf("Sending string request")
 	n, err := rw.WriteString("STRING\n")
+
+	log.Println(strconv.Itoa(n))
 	if err != nil {
 		return errors.Join(err, errors.New("Coudnt send the string request"))
 	}
-	n, err = rw.WriteString("This is a string data. This is the actual data that must be carried over")
+	n, err = rw.WriteString("This is a string data. This is the actual data that must be carried over. \n")
 	if err != nil {
 		return errors.Join(err, errors.New("coudnt send the string data"))
 	}
@@ -175,8 +179,28 @@ func client(ip string) error {
 	}
 
 	log.Println("String response from the server: ", response)
-	return
 	//need to code for the gob part
+
+	log.Println("Complexinputdata", testdata)
+
+	enc := gob.NewEncoder(rw)
+	n, err = rw.WriteString("GOB\n")
+
+	if err != nil {
+		return errors.Join(err, errors.New("Trouble sending the string in connection"))
+	}
+
+	err = enc.Encode(testdata)
+	if err != nil {
+		return errors.Join(err, errors.New("Trouble encoding the struct data"))
+	}
+
+	err = rw.Flush()
+	if err != nil {
+		return errors.Join(err, errors.New("Flush failed"))
+	}
+
+	return nil
 }
 
 func server() error {
@@ -189,5 +213,25 @@ func server() error {
 }
 
 func main() {
+	connect := flag.String("Connect", "", "IP Address.(If empty, goes into listen mode.")
+	flag.Parse()
 
+	if *connect != "" {
+		err := client(*connect)
+		if err != nil {
+			log.Println("Error:", err)
+		}
+		log.Println("Client done.")
+		return
+	}
+	err := server()
+	if err != nil {
+		log.Println("Error:", err)
+	}
+
+	log.Println("Server done.")
+}
+
+func init() {
+	log.SetFlags(log.Lmicroseconds)
 }
